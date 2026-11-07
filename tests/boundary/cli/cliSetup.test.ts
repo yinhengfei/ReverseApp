@@ -543,12 +543,50 @@ describe("interactive setup journey", () => {
       ],
       false,
       agentActions,
-      ["codex"],
+      { initialClientIds: ["codex"] },
     );
     expect(result.decision.selectedActionIds).toEqual([
       "configure_client:codex",
       "install_skill",
     ]);
+  });
+});
+
+describe("Chinese interactive setup", () => {
+  it("requires final consent after selection and preserves the chosen scope", async () => {
+    const result = await runJourney(
+      [
+        step("选择要接入 REA 的 AI 助手", " \r"),
+        step("是否应用这 2 项修改？", "\r"),
+      ],
+      false,
+      agentActions,
+      { locale: "zh-CN" },
+    );
+    expect(result.output).toContain("请检查以下修改计划");
+    expect(result.output).toContain("/isolated/.codex/config.toml");
+    expect(result.decision).toEqual({
+      approved: true,
+      selectedActionIds: ["configure_client:codex", "install_skill"],
+    });
+  });
+
+  it("cancels in Chinese when the final plan is declined", async () => {
+    const result = await runJourney(
+      [
+        step("选择要接入 REA 的 AI 助手", " \r"),
+        step("是否应用这 2 项修改？", "\u001b[D\r"),
+      ],
+      false,
+      agentActions,
+      { locale: "zh-CN" },
+    );
+    expect(result.output).toContain("已取消配置，未作任何修改。");
+    expect(result.decision).toEqual({
+      approved: false,
+      selectedActionIds: [],
+      cancelled: true,
+    });
   });
 });
 
@@ -711,17 +749,21 @@ const runJourney = async (
   steps: readonly JourneyStep[],
   accessible = false,
   journeyActions: readonly object[] = agentActions,
-  initialClientIds: readonly string[] = [],
+  presentation: {
+    readonly initialClientIds?: readonly string[];
+    readonly locale?: "en" | "zh-CN";
+  } = {},
 ): Promise<JourneyResult> => {
+  const { initialClientIds = [], locale = "en" } = presentation;
   const isolatedHome = await createTestTempDirectory("rea-cli-setup-test-");
   const script = [
     'import { confirmInteractiveSetup } from "./dist/cli/interactiveSetup.js";',
     `const actions = ${JSON.stringify(journeyActions)};`,
     `const context = ${JSON.stringify({ stage: "select", clientStates, selectedClientIds: initialClientIds, clientSelectionAllowed: true })};`,
-    `let decision = await confirmInteractiveSetup(actions, ${JSON.stringify(accessible)}, context);`,
+    `let decision = await confirmInteractiveSetup(actions, ${JSON.stringify(accessible)}, context, ${JSON.stringify(locale)});`,
     "if (!decision.cancelled && decision.selectedActionIds.length > 0) {",
     "  const selected = new Set(decision.selectedActionIds);",
-    `  decision = await confirmInteractiveSetup(actions.filter(({ id }) => selected.has(id)), ${JSON.stringify(accessible)}, { ...context, stage: "confirm", clientSelectionAllowed: false });`,
+    `  decision = await confirmInteractiveSetup(actions.filter(({ id }) => selected.has(id)), ${JSON.stringify(accessible)}, { ...context, stage: "confirm", clientSelectionAllowed: false }, ${JSON.stringify(locale)});`,
     "}",
     `process.stdout.write(${JSON.stringify(`\n${decisionMarker}`)} + JSON.stringify(decision) + "\\n");`,
   ].join("\n");

@@ -96,6 +96,8 @@ import {
 } from "./cli/guidanceCommands.js";
 import { closeCliJavaScriptResources } from "./cli/javascriptApplicationAnalysis.js";
 import { registerGuidedWorkflowCommands } from "./cli/guidedWorkflowCommands.js";
+import { cliLocale, cliText } from "./cli/locale.js";
+import { localizeCliHelp } from "./cli/chineseHelp.js";
 
 /** Close every process-owned resource used by CLI commands. */
 export const closeCliResources = async (): Promise<void> => {
@@ -124,6 +126,7 @@ export const createCli = (
   fridaInstrumentation?: FridaInstrumentationPort,
 ): CliInstance => {
   const environment = snapshotEnvironment(selectedEnvironment);
+  const locale = cliLocale(environment);
   const analysis = createDirectAnalysis(environment);
   // The executable reports an invalid level before every command except doctor.
   // Doctor keeps going so its readiness report can name REA_LOG_LEVEL.
@@ -137,12 +140,22 @@ export const createCli = (
   );
   const timedCli = Cli.create(PRODUCT_IDENTITY.cliBinary, {
     version: PRODUCT_IDENTITY.packageVersion,
-    description: "Reverse engineer anything from your terminal or agent.",
+    description: cliText(
+      locale,
+      "Reverse engineer anything from your terminal or agent.",
+      "通过命令行或 AI 助手逆向分析应用、二进制文件和运行时行为。",
+    ),
     globals: z.object({
       timings: z
         .boolean()
         .default(false)
-        .describe("Write measured command timing to stderr."),
+        .describe(
+          cliText(
+            locale,
+            "Write measured command timing to stderr.",
+            "将命令耗时写入标准错误输出。",
+          ),
+        ),
     }),
     mcp: {
       command: clientRegistrationCommandText(
@@ -252,6 +265,7 @@ export const createCli = (
       registerNativeFunctionMatchingCommands(cli, logger, environment),
   });
   presentOmittableDefaults(cli);
+  localizeCliHelp(cli, locale);
   if (resultOutput !== undefined) streamCliCommandResults(cli, resultOutput);
   const serveStrict = validateCliArguments(cli);
   presentCliArgumentErrors(cli);

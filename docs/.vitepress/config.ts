@@ -20,6 +20,7 @@ export default defineConfig({
           { text: "Installation and setup", link: "/installation" },
           { text: "Client configuration", link: "/client-configuration" },
           { text: "CLI and Evidence", link: "/cli" },
+          { text: "中文使用教程（Windows）", link: "/usage-zh-CN" },
           { text: "Agent prompts", link: "/mcp-prompts" },
           { text: "Roadmap", link: "/roadmap" },
         ],

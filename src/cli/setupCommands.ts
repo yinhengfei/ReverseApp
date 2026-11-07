@@ -26,6 +26,7 @@ import { CLI_COMMANDS } from "../cliCommandNames.js";
 import type { Logger } from "pino";
 import type { CliInstance } from "./types.js";
 import { SUPPORTED_CLIENT_DEFINITIONS } from "../application/SupportedClients.js";
+import { cliLocale, type CliLocale } from "./locale.js";
 
 const supportedClientIds = SUPPORTED_CLIENT_DEFINITIONS.map(({ name }) => name);
 const supportedClientSchema = z.enum(supportedClientIds);
@@ -224,6 +225,7 @@ const runSetupCommand = async (
   environment: Readonly<NodeJS.ProcessEnv>,
 ) => {
   const { options } = input;
+  const locale = cliLocale(environment);
   const interactive = setupIsInteractive(options, input.formatExplicit);
   const hasExplicitScope = setupHasExplicitScope(options);
   const [{ runSetup }, { systemSetupHost }, { createSystemDoctorHost }] =
@@ -233,11 +235,11 @@ const runSetupCommand = async (
       import("../doctorRuntime.js"),
     ]);
   const result = await runSetup(
-    setupRunOptions(input, interactive, hasExplicitScope),
+    setupRunOptions(input, interactive, hasExplicitScope, locale),
     systemSetupHost(createSystemDoctorHost(environment), environment),
     interactive
       ? (actions, context) =>
-          confirmInteractiveSetup(actions, options.accessible, context)
+          confirmInteractiveSetup(actions, options.accessible, context, locale)
       : undefined,
   );
   if (interactive) renderInteractiveSetupResult(result, environment);
@@ -246,7 +248,8 @@ const runSetupCommand = async (
     !input.formatExplicit &&
     hasInteractiveTerminal()
   ) {
-    if (result.status === "planned") renderSetupDryRun(result.plannedActions);
+    if (result.status === "planned")
+      renderSetupDryRun(result.plannedActions, locale);
     else renderInteractiveSetupResult(result, environment);
   }
   return result;
@@ -259,6 +262,7 @@ const setupRunOptions = (
   },
   interactive: boolean,
   hasExplicitScope: boolean,
+  locale: CliLocale,
 ): SetupOptions => {
   const { options } = input;
   const agentIntegrationSelected =
@@ -285,7 +289,9 @@ const setupRunOptions = (
     ...(options.toolFamilies === undefined
       ? {}
       : { toolFamilies: options.toolFamilies }),
-    ...(interactive ? { onProgress: renderSetupProgress } : {}),
+    ...(interactive
+      ? { onProgress: (event) => renderSetupProgress(event, locale) }
+      : {}),
     ...(hasSelectedClients && !options.allDetected
       ? {
           readinessScope: {

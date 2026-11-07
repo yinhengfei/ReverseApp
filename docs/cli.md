@@ -8,6 +8,25 @@ For a pinned, noninteractive workflow with retained reports, see
 
 ## Run a command
 
+### Chinese CLI presentation
+
+Set `REA_LOCALE=zh-CN` to select Chinese setup prompts, common command summaries
+and selected option descriptions. The default is English; `en` explicitly selects
+it. `zh`, `zh_CN` and `zh-Hans` also select simplified Chinese; unrecognized values
+fall back to English. The language is selected per CLI instance, without modifying
+shared MCP contracts, command names, parsed values or analysis Evidence. Canonical
+English command guidance remains alongside Chinese summaries. Untranslated
+metadata, Incur's built-in help headings/options and provider diagnostics retain
+their original text. See the [Windows Chinese tutorial](usage-zh-CN.md).
+
+```powershell
+$env:REA_LOCALE = "zh-CN"
+node .\scripts\rea.mjs setup --help
+```
+
+This source change must be built before use; it does not change an independently
+installed release.
+
 After [installing REA](installation.md), use `rea`. You can also run a command
 without a global installation:
 
